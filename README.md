@@ -1,5 +1,17 @@
 # CycleGAN in TensorFlow
 
+
+## Testing on new datasets : color2bw
+* Download http://host.robots.ox.ac.uk/pascal/VOC/download/tug.tar.gz and unzip it in the parent directory of CycleGAN
+* cd to CycleGAN
+* execute ``python preprocess_color2bw.py``
+
+
+
+
+
+
+
 **[update 9/26/2017]** We observed faster convergence and better performance after adding skip connection between input and output in the generator. To turn the feature on, use switch --skip=True. This is the result of turning on skip after training for 23 epochs:
 
 <img src='imgs/skip_result.jpg' width="900px"/>
