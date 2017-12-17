@@ -3,11 +3,19 @@
 
 ## Testing on new datasets : color2bw
 * Download http://host.robots.ox.ac.uk/pascal/VOC/download/tug.tar.gz and unzip it in the parent directory of CycleGAN
-* cd to CycleGAN
+* cd to CycleGAN_TensorFlow
 * execute ``python preprocess_color2bw.py``
 
+## Testing on new datasets : face2anime
+* the face dataset should be download (http://www.anefian.com/research/GTdb_crop.zip) and unzip in the parent directory of CycleGAN
+* in this same directory, execute :
+``$ pip install brine-io
+  $ brine install jayleicn/anime-faces``
+	modifying the dataset_size_wanted if needed
 
-
+* cd to CycleGAN_TensorFlow
+* execute ``python preprocess_faces.py``
+modifying the dataset_size_wanted if needed
 
 
 
@@ -18,7 +26,7 @@
 
 This is the TensorFlow implementation for CycleGAN. The code was written by [Harry Yang](https://www.harryyang.org) and [Nathan Silberman](https://github.com/nathansilberman).
 
-CycleGAN: [[Project]](https://junyanz.github.io/CycleGAN/) [[Paper]](https://arxiv.org/pdf/1703.10593.pdf) 
+CycleGAN: [[Project]](https://junyanz.github.io/CycleGAN/) [[Paper]](https://arxiv.org/pdf/1703.10593.pdf)
 
 ## Introduction
 
@@ -30,14 +38,14 @@ Below is a snapshot of our result at the 50th epoch on one training instance:
 
 ## Getting Started
 ### Prepare dataset
-* You can either download one of the defaults CycleGAN datasets or use your own dataset. 
+* You can either download one of the defaults CycleGAN datasets or use your own dataset.
 	* Download a CycleGAN dataset (e.g. horse2zebra):
 	```bash
 	bash ./download_datasets.sh horse2zebra
 	```
-	* Use your own dataset: put images from each domain at folder_a and folder_b respectively. 
+	* Use your own dataset: put images from each domain at folder_a and folder_b respectively.
 
-* Create the csv file as input to the data loader. 
+* Create the csv file as input to the data loader.
 	* Edit the cyclegan_datasets.py file. For example, if you have a face2ramen_train dataset which contains 800 face images and 1000 ramen images both in PNG format, you can just edit the cyclegan_datasets.py as following:
 	```python
 	DATASET_TO_SIZES = {
@@ -52,14 +60,14 @@ Below is a snapshot of our result at the 50th epoch on one training instance:
     'face2ramen_train': '.png'
 	}
 
-	``` 
+	```
 	* Run create_cyclegan_dataset.py:
 	```bash
 	python -m CycleGAN_TensorFlow.create_cyclegan_dataset --image_path_a=folder_a --image_path_b=folder_b --dataset_name="horse2zebra_train" --do_shuffle=0
 	```
 
 ### Training
-* Create the configuration file. The configuration file contains basic information for training/testing. An example of the configuration file could be fond at configs/exp_01.json. 
+* Create the configuration file. The configuration file contains basic information for training/testing. An example of the configuration file could be fond at configs/exp_01.json.
 
 * Start training:
 ```bash
@@ -71,7 +79,7 @@ python -m CycleGAN_TensorFlow.main \
 * Check the intermediate results.
 	* Tensorboard
 	```bash
-	tensorboard --port=6006 --logdir=CycleGAN_TensorFlow/output/cyclegan/exp_01/#timestamp# 
+	tensorboard --port=6006 --logdir=CycleGAN_TensorFlow/output/cyclegan/exp_01/#timestamp#
 	```
 	* Check the html visualization at CycleGAN_TensorFlow/output/cyclegan/exp_01/#timestamp#/epoch_#id#.html.  
 
@@ -86,7 +94,7 @@ python -m CycleGAN_TensorFlow.main \
 ### Testing
 * Create the testing dataset.
 	* Edit the cyclegan_datasets.py file the same way as training.
-	* Create the csv file as the input to the data loader. 
+	* Create the csv file as the input to the data loader.
 	```bash
 	python -m CycleGAN_TensorFlow.create_cyclegan_dataset --image_path_a=folder_a --image_path_b=folder_b --dataset_name="horse2zebra_test" --do_shuffle=0
 	```
@@ -96,10 +104,6 @@ python -m CycleGAN_TensorFlow.main \
     --to_train=0 \
     --log_dir=CycleGAN_TensorFlow/output/cyclegan/exp_01 \
     --config_filename=CycleGAN_TensorFlow/configs/exp_01_test.json \
-    --checkpoint_dir=CycleGAN_TensorFlow/output/cyclegan/exp_01/#old_timestamp# 
+    --checkpoint_dir=CycleGAN_TensorFlow/output/cyclegan/exp_01/#old_timestamp#
 ```
 The result is saved in CycleGAN_TensorFlow/output/cyclegan/exp_01/#new_timestamp#.
-
-
-
-
