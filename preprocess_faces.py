@@ -14,6 +14,7 @@ for image in os.listdir(raw_im_dir+'/'):
     filenames.append(raw_im_dir+'/{}'.format(image))
 
 np.random.shuffle(filenames)
+
 ## If you want to reduce dataset size:
 dataset_size_wanted = -1
 filenames = filenames[:dataset_size_wanted]
