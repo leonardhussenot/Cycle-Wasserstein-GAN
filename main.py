@@ -91,7 +91,7 @@ class CycleGAN:
                 model.IMG_CHANNELS
             ], name="fake_pool_B")
 
-        self.global_step = slim.get_or_create_global_step()
+        self.global_step = tf.train.get_or_create_global_step()
 
         self.num_fake_inputs = 0
 
