@@ -120,7 +120,7 @@ class CycleGAN:
         self.prob_fake_pool_a_is_real = outputs['prob_fake_pool_a_is_real']
         self.prob_fake_pool_b_is_real = outputs['prob_fake_pool_b_is_real']
 
-    def compute_losses(self):
+    def compute_losses(self, wassertein=False):
         """
         In this function we are defining the variables for loss calculations
         and training model.
@@ -130,6 +130,8 @@ class CycleGAN:
         *_trainer -> Various trainer for above loss functions
         *_summ -> Summary variables for above loss functions
         """
+
+        # Cycle loss
         cycle_consistency_loss_a = \
             self._lambda_a * losses.cycle_consistency_loss(
                 real_images=self.input_a, generated_images=self.cycle_images_a,
@@ -139,24 +141,47 @@ class CycleGAN:
                 real_images=self.input_b, generated_images=self.cycle_images_b,
             )
 
-        lsgan_loss_a = losses.lsgan_loss_generator(self.prob_fake_a_is_real)
-        lsgan_loss_b = losses.lsgan_loss_generator(self.prob_fake_b_is_real)
+        # GAN losses (wassertein or least squares)
+
+        #first generators
+        if wassertein:
+            gan_loss_a = losses.wasserstein_loss_generator(self.prob_fake_a_is_real)
+            gan_loss_b = losses.wasserstein_loss_generator(self.prob_fake_b_is_real)
+        else:
+            gan_loss_a = losses.lsgan_loss_generator(self.prob_fake_a_is_real)
+            gan_loss_b = losses.lsgan_loss_generator(self.prob_fake_b_is_real)
 
         g_loss_A = \
-            cycle_consistency_loss_a + cycle_consistency_loss_b + lsgan_loss_b
+            cycle_consistency_loss_a + cycle_consistency_loss_b + gan_loss_b
         g_loss_B = \
-            cycle_consistency_loss_b + cycle_consistency_loss_a + lsgan_loss_a
+            cycle_consistency_loss_b + cycle_consistency_loss_a + gan_loss_a
+        #then discriminators
+        if wassertein:
+            d_loss_A = losses.wasserstein_loss_discriminator(
+                prob_real_is_real=self.prob_real_a_is_real,
+                prob_fake_is_real=self.prob_fake_pool_a_is_real,
+            )
+            d_loss_B = losses.wasserstein_loss_discriminator(
+                prob_real_is_real=self.prob_real_b_is_real,
+                prob_fake_is_real=self.prob_fake_pool_b_is_real,
+            )
+        else:
+            d_loss_A = losses.lsgan_loss_discriminator(
+                prob_real_is_real=self.prob_real_a_is_real,
+                prob_fake_is_real=self.prob_fake_pool_a_is_real,
+            )
+            d_loss_B = losses.lsgan_loss_discriminator(
+                prob_real_is_real=self.prob_real_b_is_real,
+                prob_fake_is_real=self.prob_fake_pool_b_is_real,
+            )
 
-        d_loss_A = losses.lsgan_loss_discriminator(
-            prob_real_is_real=self.prob_real_a_is_real,
-            prob_fake_is_real=self.prob_fake_pool_a_is_real,
-        )
-        d_loss_B = losses.lsgan_loss_discriminator(
-            prob_real_is_real=self.prob_real_b_is_real,
-            prob_fake_is_real=self.prob_fake_pool_b_is_real,
-        )
-
-        optimizer = tf.train.AdamOptimizer(self.learning_rate, beta1=0.5)
+        #Optimizer (depends on LS or wassertein)
+        if wassertein:
+            #TODO:Constant learning rate ou adaptative???
+            # In the WGAN implementation : constant
+            optimizer = tf.train.RMSPropOptimizer(learning_rate=0.00005)
+        else:
+            optimizer = tf.train.AdamOptimizer(self.learning_rate, beta1=0.5)
 
         self.model_vars = tf.trainable_variables()
 
@@ -164,6 +189,16 @@ class CycleGAN:
         g_A_vars = [var for var in self.model_vars if 'g_A' in var.name]
         d_B_vars = [var for var in self.model_vars if 'd_B' in var.name]
         g_B_vars = [var for var in self.model_vars if 'g_B' in var.name]
+
+        d_vars = d_A_vars + g_B_vars
+        # clipping weights of discriminators as told in the
+        # WasserteinGAN paper to enforce Lipschitz constraint.
+        if wassertein:
+           clip_values = [-0.01, 0.01]
+           clip_discriminator_var_op = [var.assign(tf.clip_by_value(var, clip_values[0], clip_values[1])) for
+              var in d_vars]
+
+
 
         self.d_A_trainer = optimizer.minimize(d_loss_A, var_list=d_A_vars)
         self.d_B_trainer = optimizer.minimize(d_loss_B, var_list=d_B_vars)
@@ -243,8 +278,18 @@ class CycleGAN:
             else:
                 return fake
 
-    def train(self):
+    def train(self, wassertein=False):
         """Training Function."""
+
+        #TODO : to copy Wassertein, we need to train the discriminator for
+        # 5 or 25 runs each time we train once the generator.
+        # need to introduce n_critic
+        # cf : https://github.com/cameronfabbri/Wasserstein-GAN-Tensorflow/blob/master/train.py
+
+
+        #TODO : write sess.run(clip_discriminator_var_op) after each
+        # discriminator update
+
         # Load Dataset from the dataset folder
         self.inputs = data_loader.load_data(
             self._dataset_name, self._size_before_crop,
@@ -254,7 +299,7 @@ class CycleGAN:
         self.model_setup()
 
         # Loss function calculations
-        self.compute_losses()
+        self.compute_losses(wassertein=wassertein)
 
         # Initializing the global variables
         init = (tf.global_variables_initializer(),

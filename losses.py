@@ -69,3 +69,38 @@ def lsgan_loss_discriminator(prob_real_is_real, prob_fake_is_real):
     """
     return (tf.reduce_mean(tf.squared_difference(prob_real_is_real, 1)) +
             tf.reduce_mean(tf.squared_difference(prob_fake_is_real, 0))) * 0.5
+
+def wasserstein_loss_discriminator(prob_real_is_real, prob_fake_is_real):
+
+    """Computes the Wassertein-GAN loss as minimized by the discriminator.
+    From paper :
+     WasserteinGAN : https://arxiv.org/pdf/1701.07875.pdf
+     by Martin Arjovsky, Soumith Chintala and Léon Bottou
+    Args:
+        prob_real_is_real: The discriminator's estimate that images actually
+            drawn from the real domain are in fact real.
+        prob_fake_is_real: The discriminator's estimate that generated images
+            made to look like real images are real.
+
+    Returns:
+        The total W-GAN loss.
+    """
+    return tf.reduce_mean(prob_real_is_real - prob_fake_is_real)
+
+def wasserstein_loss_generator(prob_fake_is_real):
+
+    """Computes the Wassertein-GAN loss as minimized by the generator.
+    From paper :
+     WasserteinGAN : https://arxiv.org/pdf/1701.07875.pdf
+     by Martin Arjovsky, Soumith Chintala and Léon Bottou
+    Args:
+        prob_real_is_real: The discriminator's estimate that images actually
+            drawn from the real domain are in fact real.
+        prob_fake_is_real: The discriminator's estimate that generated images
+            made to look like real images are real.
+
+    Returns:
+        The total W-GAN loss.
+    """
+
+    return tf.reduce_mean(prob_fake_is_real)
