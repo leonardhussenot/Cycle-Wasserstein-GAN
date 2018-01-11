@@ -25,7 +25,7 @@ class CycleGAN:
         current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
 
         self._pool_size = pool_size
-        self._size_before_crop = 286
+        self._size_before_crop = 96
         self._lambda_a = lambda_a
         self._lambda_b = lambda_b
         self._output_dir = os.path.join(output_root_dir, current_time)
@@ -39,6 +39,8 @@ class CycleGAN:
         self._checkpoint_dir = checkpoint_dir
         self._do_flipping = do_flipping
         self._skip = skip
+        self._n = 1
+        self._ncritic = 5
 
         self.fake_images_A = np.zeros(
             (self._pool_size, 1, model.IMG_HEIGHT, model.IMG_WIDTH,
@@ -195,7 +197,7 @@ class CycleGAN:
         # WasserteinGAN paper to enforce Lipschitz constraint.
         if wassertein:
            clip_values = [-0.01, 0.01]
-           clip_discriminator_var_op = [var.assign(tf.clip_by_value(var, clip_values[0], clip_values[1])) for
+           self.clip_discriminator_var_op = [var.assign(tf.clip_by_value(var, clip_values[0], clip_values[1])) for
               var in d_vars]
 
 
@@ -300,6 +302,10 @@ class CycleGAN:
 
         # Loss function calculations
         self.compute_losses(wassertein=wassertein)
+        if wassertein: 
+            self._ncritic = 5
+        else:
+            self._ncritic = 1
 
         # Initializing the global variables
         init = (tf.global_variables_initializer(),
@@ -344,20 +350,31 @@ class CycleGAN:
 
                     inputs = sess.run(self.inputs)
 
-                    # Optimizing the G_A network
-                    _, fake_B_temp, summary_str = sess.run(
-                        [self.g_A_trainer,
-                         self.fake_images_b,
-                         self.g_A_loss_summ],
-                        feed_dict={
-                            self.input_a:
-                                inputs['images_i'],
-                            self.input_b:
-                                inputs['images_j'],
-                            self.learning_rate: curr_lr
-                        }
-                    )
-                    writer.add_summary(summary_str, epoch * max_images + i)
+                    if self._n == self._ncritic:
+                        # Optimizing the G_A network
+                        _, fake_B_temp, summary_str = sess.run(
+                            [self.g_A_trainer,
+                             self.fake_images_b,
+                             self.g_A_loss_summ],
+                            feed_dict={
+                                self.input_a:
+                                    inputs['images_i'],
+                                self.input_b:
+                                    inputs['images_j'],
+                                self.learning_rate: curr_lr
+                            }
+                        )
+                        writer.add_summary(summary_str, epoch * max_images + i)
+                    else: 
+                        fake_B_temp = sess.run(
+                            [self.fake_images_b],
+                            feed_dict={
+                                self.input_a:
+                                    inputs['images_i'],
+                                self.input_b:
+                                    inputs['images_j']
+                            }
+                        )[0]
 
                     fake_B_temp1 = self.fake_image_pool(
                         self.num_fake_inputs, fake_B_temp, self.fake_images_B)
@@ -375,22 +392,33 @@ class CycleGAN:
                         }
                     )
                     writer.add_summary(summary_str, epoch * max_images + i)
-
-                    # Optimizing the G_B network
-                    _, fake_A_temp, summary_str = sess.run(
-                        [self.g_B_trainer,
-                         self.fake_images_a,
-                         self.g_B_loss_summ],
-                        feed_dict={
-                            self.input_a:
-                                inputs['images_i'],
-                            self.input_b:
-                                inputs['images_j'],
-                            self.learning_rate: curr_lr
-                        }
-                    )
-                    writer.add_summary(summary_str, epoch * max_images + i)
-
+                    if wassertein:
+                        sess.run(self.clip_discriminator_var_op)
+                    if self._n == self._ncritic:
+                        # Optimizing the G_B network
+                        _, fake_A_temp, summary_str = sess.run(
+                            [self.g_B_trainer,
+                             self.fake_images_a,
+                             self.g_B_loss_summ],
+                            feed_dict={
+                                self.input_a:
+                                    inputs['images_i'],
+                                self.input_b:
+                                    inputs['images_j'],
+                                self.learning_rate: curr_lr
+                            }
+                        )
+                        writer.add_summary(summary_str, epoch * max_images + i)
+                    else: 
+                        fake_A_temp= sess.run(
+                            [self.fake_images_a],
+                            feed_dict={
+                                self.input_a:
+                                    inputs['images_i'],
+                                self.input_b:
+                                    inputs['images_j']
+                            }
+                        )[0]
                     fake_A_temp1 = self.fake_image_pool(
                         self.num_fake_inputs, fake_A_temp, self.fake_images_A)
 
@@ -407,9 +435,12 @@ class CycleGAN:
                         }
                     )
                     writer.add_summary(summary_str, epoch * max_images + i)
-
+                    if wassertein:
+                        sess.run(self.clip_discriminator_var_op)
                     writer.flush()
                     self.num_fake_inputs += 1
+                    if self._n == self._ncritic: 
+                        self._n = 1
 
                 sess.run(tf.assign(self.global_step, epoch + 1))
 
@@ -502,7 +533,7 @@ def main(to_train, log_dir, config_filename, checkpoint_dir, skip):
                               dataset_name, checkpoint_dir, do_flipping, skip)
 
     if to_train > 0:
-        cyclegan_model.train()
+        cyclegan_model.train(wassertein = True)
     else:
         cyclegan_model.test()
 

@@ -7,17 +7,23 @@ import pathlib
 import string
 
 
-classes = ['ahoge','black_hair']
+# classes = ['ahoge','black_hair']
 
 filenames = []
 
-raw_im_dir = "../brine_datasets/jayleicn/anime-faces/images"
+# raw_im_dir = "../brine_datasets/jayleicn/anime-faces/images"
+raw_im_dir = "../anime_data/"
 
 
-for one_class in classes:
-    for image in os.listdir(raw_im_dir+'/{}'.format(one_class)):
-        if image.endswith(".jpg"):
-            filenames.append(raw_im_dir+'/{}/{}'.format(one_class,image))
+# for one_class in classes:
+#     for image in os.listdir(raw_im_dir+'/{}'.format(one_class)):
+#         if image.endswith(".jpg"):
+#             filenames.append(raw_im_dir+'/{}/{}'.format(one_class,image))
+
+
+for image in os.listdir(raw_im_dir):
+    if image.endswith(".png"):
+        filenames.append(raw_im_dir+'/{}'.format(image))
 
 ## If you want to reduce dataset size:
 dataset_size_wanted = -1
