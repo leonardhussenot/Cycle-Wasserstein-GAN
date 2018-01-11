@@ -192,7 +192,7 @@ class CycleGAN:
         d_B_vars = [var for var in self.model_vars if 'd_B' in var.name]
         g_B_vars = [var for var in self.model_vars if 'g_B' in var.name]
 
-        d_vars = d_A_vars + g_B_vars
+        d_vars = d_A_vars + d_B_vars
         # clipping weights of discriminators as told in the
         # WasserteinGAN paper to enforce Lipschitz constraint.
         if wassertein:
@@ -440,8 +440,9 @@ class CycleGAN:
                     writer.flush()
                     self.num_fake_inputs += 1
                     if self._n == self._ncritic: 
-                        self._n = 1
+                        self._n = 0
 
+                    self._n += 1
                 sess.run(tf.assign(self.global_step, epoch + 1))
 
             coord.request_stop()
